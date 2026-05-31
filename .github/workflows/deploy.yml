@@ -85,7 +85,7 @@ jobs:
 
       - name: Output deployment URLs
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: echo "API: $(terraform output -raw api_url)"
+        run: 'echo "API: $(terraform output -raw api_url)"'
 
   deploy-pages:
     needs: deploy
