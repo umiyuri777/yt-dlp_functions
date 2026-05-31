@@ -27,3 +27,8 @@ output "presigned_url_expiry" {
   description = "Presigned URL 有効期限（秒）"
   value       = var.presigned_url_expiry
 }
+
+output "github_actions_role_arn" {
+  description = "GitHub Actions の AWS_ROLE_ARN シークレットに設定する IAM ロール ARN"
+  value       = aws_iam_role.github_actions.arn
+}

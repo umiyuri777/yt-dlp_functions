@@ -52,3 +52,15 @@ variable "s3_lifecycle_days" {
   type        = number
   default     = 1
 }
+
+variable "github_repository" {
+  description = "GitHub リポジトリ (owner/repo)。OIDC の sub 制限に使用"
+  type        = string
+}
+
+variable "github_oidc_provider_arn" {
+  description = "既存アカウントの GitHub OIDC プロバイダ ARN。null のとき新規作成（既存があると apply が失敗する場合は ARN を指定）"
+  type        = string
+  default     = null
+  nullable    = true
+}

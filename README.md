@@ -103,12 +103,45 @@ terraform apply
 
 **OIDC（推奨）**
 
+Deploy ワークフロー実行前に、ローカルで Terraform から OIDC 用ロールを作成し、ARN を GitHub に登録します。
+
+1. `terraform.tfvars` に `github_repository = "あなたのユーザー/yt-dlp_functions"` を追加（例は `terraform.tfvars.example` 参照）
+2. ローカルで GitHub Actions 用リソースのみ作成:
+
+```bash
+cd terraform
+terraform init
+
+terraform apply \
+  '-target=aws_iam_openid_connect_provider.github_actions[0]' \
+  -target=aws_iam_role.github_actions \
+  -target=aws_iam_role_policy_attachment.github_actions_poweruser \
+  -target=aws_iam_role_policy.github_actions_iam
+```
+
+アカウントに既に `token.actions.githubusercontent.com` の OIDC プロバイダがある場合は apply が失敗します。そのときは `terraform.tfvars` に既存 ARN を指定して再実行してください。
+
+```hcl
+github_oidc_provider_arn = "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+```
+
+（このとき `-target=aws_iam_openid_connect_provider.github_actions` は不要です。）
+
+3. ARN を取得して GitHub シークレットに登録:
+
+```bash
+terraform output -raw github_actions_role_arn
+# リポジトリ Settings → Secrets and variables → Actions
+#   AWS_ROLE_ARN = 上記の出力
+#   AWS_REGION   = ap-northeast-1 など
+```
+
 | Secret / Variable | 説明 |
 |-------------------|------|
-| `AWS_ROLE_ARN` | GitHub OIDC を信頼する IAM ロール ARN |
-| `AWS_REGION` | 例: `ap-northeast-1` |
+| `AWS_ROLE_ARN` | `terraform output -raw github_actions_role_arn` の値 |
+| `AWS_REGION` | 例: `ap-northeast-1`（`terraform.tfvars` の `aws_region` と揃える） |
 
-IAM ロールには ECR push、Lambda 更新、Terraform 用の権限（S3 state を使う場合はそのバケットも）を付与してください。
+ロールには Deploy 用に PowerUserAccess と Terraform 向け IAM 操作権限が付与されています（個人・学習用途向け。本番では必要最小限に絞ってください）。
 
 **アクセスキー（代替）**
 
@@ -164,7 +197,7 @@ CORS は API Gateway の `cors_allowed_origins`（デフォルト `*`）で設�
 
 ## S3 ライフサイクル
 
-`downloads/` プレフィックスのオブジェクトは **2 日後** に自動削除されます（`s3_lifecycle_days` で変更可）。
+`downloads/` プレフィックスのオブジェクトは **1 日後** に自動削除されます（`s3_lifecycle_days` で変更可）。
 
 ## 法的注意・免責
 
