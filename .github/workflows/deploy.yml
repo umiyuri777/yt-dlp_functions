@@ -1,0 +1,118 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  TF_WORKING_DIR: terraform
+  LAMBDA_DIR: lambda
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      api_url: ${{ steps.api_url.outputs.url }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+
+      - name: Bootstrap infrastructure (ECR, S3, IAM)
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform apply -auto-approve \
+            -target=aws_ecr_repository.lambda \
+            -target=aws_s3_bucket.downloads \
+            -target=aws_s3_bucket_public_access_block.downloads \
+            -target=aws_s3_bucket_server_side_encryption_configuration.downloads \
+            -target=aws_s3_bucket_lifecycle_configuration.downloads \
+            -target=aws_iam_role.lambda \
+            -target=aws_iam_role_policy_attachment.lambda_basic \
+            -target=aws_iam_role_policy.lambda_s3 \
+            -target=aws_cloudwatch_log_group.lambda
+
+      - name: Read ECR repository URL
+        id: ecr
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: echo "url=$(terraform output -raw ecr_repository_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Lambda image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${{ steps.ecr.outputs.url }}:${IMAGE_TAG}"
+          docker build -t "$IMAGE_URI" -t "${{ steps.ecr.outputs.url }}:latest" ./${{ env.LAMBDA_DIR }}
+          docker push "$IMAGE_URI"
+          docker push "${{ steps.ecr.outputs.url }}:latest"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Terraform apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform apply -auto-approve \
+            -var="lambda_image_tag=${{ github.sha }}"
+
+      - name: Export API URL
+        id: api_url
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: echo "url=$(terraform output -raw api_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Output deployment URLs
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: echo "API: $(terraform output -raw api_url)"
+
+  deploy-pages:
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate config.js
+        run: |
+          cat > front/config.js <<EOF
+          window.APP_CONFIG = {
+            apiUrl: "${{ needs.deploy.outputs.api_url }}",
+          };
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: front
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

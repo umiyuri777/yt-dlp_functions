@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Media Download</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Media Download</h1>
+      <p class="hint">
+        動画・音楽の URL を入力し、形式やファイル名を指定してダウンロード用リンクを取得します。
+      </p>
+
+      <form id="download-form" novalidate>
+        <div class="field">
+          <label for="url-input">URL <span class="required" aria-hidden="true">*</span></label>
+          <input
+            id="url-input"
+            type="url"
+            name="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            required
+            autocomplete="url"
+            inputmode="url"
+          />
+        </div>
+
+        <div class="field">
+          <label for="extension-select">形式（拡張子）</label>
+          <select id="extension-select" name="extension">
+            <option value="m4a" selected>m4a（音声）</option>
+            <option value="mp3">mp3（音声）</option>
+            <option value="mp4">mp4（動画）</option>
+            <option value="webm">webm（動画）</option>
+          </select>
+        </div>
+
+        <div class="field" id="quality-field" hidden>
+          <label for="quality-select">画質</label>
+          <select id="quality-select" name="quality">
+            <option value="360">360p</option>
+            <option value="480">480p</option>
+            <option value="720" selected>720p</option>
+            <option value="1080">1080p</option>
+            <option value="best">最高画質</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filename-input">ファイル名（任意）</label>
+          <input
+            id="filename-input"
+            type="text"
+            name="filename"
+            placeholder="my-song"
+            maxlength="200"
+            pattern="[A-Za-z0-9_-]*"
+            autocomplete="off"
+          />
+          <p class="field-hint">
+            拡張子は付けないでください。上で選んだ形式（例: .m4a）が自動で付きます。英数字・ハイフン・アンダースコアのみ使用できます。
+          </p>
+        </div>
+
+        <button type="submit" id="submit-btn">
+          <span class="btn-label">ダウンロードリンクを取得</span>
+          <span class="spinner hidden" id="spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+
+      <section id="result" class="result hidden" aria-labelledby="result-heading">
+        <h2 id="result-heading" class="result-heading">ダウンロード準備完了</h2>
+        <p>有効期限: <span id="expires-in"></span> 秒</p>
+        <a id="download-link" href="#" target="_blank" rel="noopener noreferrer">
+          ダウンロードを開始
+        </a>
+        <p class="key-label">S3 key: <code id="object-key"></code></p>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

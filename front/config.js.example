@@ -1,0 +1,4 @@
+// ローカル開発用。本番の apiUrl は Deploy ワークフロー（GitHub Pages）で自動生成される
+window.APP_CONFIG = {
+  apiUrl: "https://YOUR_API_ID.execute-api.ap-northeast-1.amazonaws.com/download",
+};
