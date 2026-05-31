@@ -1,0 +1,6 @@
+# cp backend.hcl.example backend.hcl して ACCOUNT_ID を置換。
+# 初回: terraform init -backend-config=backend.hcl -migrate-state
+bucket  = "yt-dlp-music-tfstate-ACCOUNT_ID"
+key     = "terraform.tfstate"
+region  = "ap-northeast-1"
+encrypt = true

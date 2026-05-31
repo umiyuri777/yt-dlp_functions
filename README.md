@@ -36,6 +36,8 @@ YouTube 等の URL から音声・動画を取得し、S3 に保存したうえ�
 
 Lambda コンテナイメージは ECR に存在しないと作成できないため、**ECR → イメージ push → 全体 apply** の順序が必要です。`deploy.yml` はこの順序を自動化しています。
 
+**CI で Bootstrap が毎回走る場合:** GitHub Actions は checkout ごとに空の作業ディレクトリから始まるため、Terraform state を S3 に置かないと毎回「初回デプロイ」扱いになります。ローカルで一度 state を S3 に移行してください（下記「Terraform state（S3）」参照）。
+
 ### 1. Terraform 変数
 
 ```bash
@@ -83,6 +85,26 @@ docker push "${ECR_URL}:latest"
 
 cd ../terraform
 terraform apply
+```
+
+### 2b. Terraform state（S3）— CI 利用前に一度だけ
+
+Deploy ワークフローは state を `yt-dlp-music-tfstate-<ACCOUNT_ID>` バケットに保存します。**ローカルですでに apply 済みの場合**は、次で state を S3 に移行してください（移行しないと CI が毎回 Bootstrap からやり直します）。
+
+```bash
+cd terraform
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+cp backend.hcl.example backend.hcl
+# backend.hcl の ACCOUNT_ID を実際の ID に置換
+
+# バケットが無ければ作成（CI でも自動作成されます）
+BUCKET="yt-dlp-music-tfstate-${ACCOUNT_ID}"
+aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null || \
+  aws s3api create-bucket --bucket "$BUCKET" --region ap-northeast-1 \
+    --create-bucket-configuration LocationConstraint=ap-northeast-1
+
+terraform init -backend-config=backend.hcl -migrate-state
+# "Do you want to copy existing state?" → yes
 ```
 
 ### 3. フロントのデプロイ（GitHub Pages）

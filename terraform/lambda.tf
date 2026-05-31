@@ -29,6 +29,6 @@ resource "aws_lambda_function" "download" {
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
-  name              = "/aws/lambda/${aws_lambda_function.download.function_name}"
+  name              = "/aws/lambda/${var.project_name}-download"
   retention_in_days = 14
 }
