@@ -1,6 +1,8 @@
 FROM public.ecr.aws/lambda/python:3.12
 
-RUN dnf install -y ffmpeg tar xz \
+# Amazon Linux 2023 SPAL provides the runtime package as ffmpeg-free.
+RUN dnf install -y spal-release \
+    && dnf install -y ffmpeg-free tar xz \
     && dnf clean all
 
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/
