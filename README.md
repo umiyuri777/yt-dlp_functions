@@ -177,6 +177,45 @@ terraform output -raw github_actions_role_arn
 
 ## ローカル開発
 
+### 自宅サーバー（Docker）
+
+自宅サーバーの Tailscale IP（`100.67.62.64`）で起動する場合:
+
+```bash
+cd yt-dlp_functions
+mkdir -p downloads
+PUBLIC_BASE_URL=http://100.67.62.64:8080 docker compose up -d --build
+curl http://100.67.62.64:8080/health
+```
+
+`POST http://100.67.62.64:8080/download` に API 仕様と同じ JSON を送ると、
+レスポンスの `download_url` からファイルを取得できます。ダウンロード済みファイルは
+ホストの `downloads/` に残ります。外部公開せず、Tailscale 内からのみ利用してください。
+
+### CPU・メモリ監視（Grafana）
+
+同じ `docker compose up -d --build` で Prometheus、Grafana、Node Exporter、
+cAdvisor も起動します。Grafana は `http://100.67.62.64:3000`、Prometheus は
+`http://100.67.62.64:9090` です。Grafana の初期ユーザーは `admin`、
+パスワードは `change-me-now` なので、必ず起動前に変更してください。
+
+```bash
+export GRAFANA_ADMIN_PASSWORD='長く推測困難なパスワード'
+export MONITORING_BIND_ADDRESS='100.67.62.64'
+docker compose up -d --build
+```
+
+Grafana の `yt-dlp / yt-dlp Server` ダッシュボードには、ホストの CPU・メモリと
+コンテナごとの CPU・メモリが自動表示されます。データは Prometheus に 15 日間保存します。
+監視ポートは Tailscale 内だけからアクセスできるよう、`MONITORING_BIND_ADDRESS` を
+自宅サーバーの Tailscale IP に設定してください。
+
+停止する場合:
+
+```bash
+docker compose down
+```
+
 ### Lambda イメージのビルド確認
 
 ```bash

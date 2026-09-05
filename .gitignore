@@ -32,3 +32,4 @@ dist/
 # Local
 *.log
 /tmp/
+/downloads/

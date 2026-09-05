@@ -12,7 +12,7 @@ import yt_dlp
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-BUCKET_NAME = os.environ["BUCKET_NAME"]
+BUCKET_NAME = os.environ.get("BUCKET_NAME")
 PRESIGNED_EXPIRY = int(os.environ.get("PRESIGNED_EXPIRY", "3600"))
 TMP_DIR = Path("/tmp")
 
@@ -44,7 +44,7 @@ CONTENT_TYPES = {
     ".mov": "video/quicktime",
 }
 
-s3_client = boto3.client("s3")
+s3_client = boto3.client("s3") if BUCKET_NAME else None
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": os.environ.get("CORS_ALLOW_ORIGIN", "*"),
@@ -155,6 +155,8 @@ def _upload_and_presign(
     local_path: Path,
     filename: str | None = None,
 ) -> tuple[str, str, str]:
+    if not BUCKET_NAME:
+        raise RuntimeError("BUCKET_NAME is required for AWS Lambda mode")
     ext = local_path.suffix.lower() or f".{DEFAULT_AUDIO_EXTENSION}"
     if filename:
         key = f"downloads/{filename}{ext}"
